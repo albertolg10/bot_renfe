@@ -6,6 +6,24 @@ import time
 from playwright.sync_api import sync_playwright
 from plyer import notification
 
+import urllib.request
+import urllib.parse
+
+
+def enviar_telegram(mensaje):
+    # ¡Pon tus datos reales aquí entre las comillas!
+    TOKEN = "8680098167:AAHL3p3t4OVZuuGh5ncZQ3lAatpcYjy6VnA"
+    CHAT_ID = "7894349301"
+    
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    datos = urllib.parse.urlencode({'chat_id': CHAT_ID, 'text': mensaje}).encode('utf-8')
+    
+    try:
+        urllib.request.urlopen(url, data=datos)
+        print("📱 ¡Mensaje enviado a tu Telegram!")
+    except Exception as e:
+        print(f"⚠️ Error al enviar Telegram: {e}")
+
 bot_activo = False
 
 def enviar_notificacion(titulo, mensaje):
@@ -137,6 +155,12 @@ def buscar_trenes(origen, destino, dia, hora_min, hora_max):
 
             if trenes_validos > 0:
                 print(f"¡Éxito! {trenes_validos} trenes disponibles en tu horario.")
+
+                #Mensaje a Telegram
+                mensaje_movil = f"🚆 ¡BINGO RENFE!\nHay {trenes_validos} trenes disponibles de {origen} a {destino} en tu horario."
+                enviar_telegram(mensaje_movil)
+
+                #Mensaje en el ordenador
                 enviar_notificacion("¡Billetes Disponibles!", f"Hay {trenes_validos} trenes de {origen} a {destino} en tu horario.")
                 alertar_en_interfaz(origen, destino, trenes_validos, hora_min, hora_max)
             else:
