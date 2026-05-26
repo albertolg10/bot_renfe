@@ -29,13 +29,13 @@ bot_activo = False
 def enviar_notificacion(titulo, mensaje):
     notification.notify(title=titulo, message=mensaje, app_name='Renfe Tracker', timeout=10)
 
-def alertar_en_interfaz(origen, destino, cantidad, hora_min, hora_max):
+def alertar_en_interfaz(origen, destino, cantidad, texto_horas):
     def mostrar_popup():
         ventana.deiconify()
         ventana.attributes('-topmost', True)
         
         etiqueta_estado.config(text=f"¡ÉXITO! {cantidad} trenes encontrados", fg="blue")
-        mensaje = f"¡Se han encontrado {cantidad} trenes con plazas de {origen} a {destino}!\n\nHorario: entre las {hora_min} y las {hora_max}.\n\nEl bot se ha detenido. ¡Corre a la web de Renfe!"
+        mensaje = f"¡Se han encontrado {cantidad} trenes con plazas de {origen} a {destino}!\n\n🕒 Horas de salida: {texto_horas}\n\nEl bot se ha detenido. ¡Corre a la web de Renfe!"
         messagebox.showinfo("¡Billetes Disponibles!", mensaje)
         
         ventana.attributes('-topmost', False)
@@ -104,7 +104,7 @@ def buscar_trenes(origen, destino, dia, hora_min, hora_max):
 
             
             # --- NUEVA LÓGICA: SOLO SALIDAS (ADIÓS LLEGADAS) ---
-            trenes_validos = 0
+            horas_disponibles = [] # NUEVO: Creamos una lista vacía para guardar las horas
             horas_procesadas = set() 
             
             elementos_hora = page.locator('h5[aria-hidden="true"]').all()
@@ -136,7 +136,7 @@ def buscar_trenes(origen, destino, dia, hora_min, hora_max):
                     
                     if hora_min <= hora_limpia <= hora_max:
                         if caja_tren.locator('.precio-final').count() > 0:
-                            trenes_validos += 1
+                            horas_disponibles.append(hora_limpia)
                             print(f"  -> ¡BINGO! Tren disponible a las {hora_limpia}")
                             
                         elif caja_tren.locator('[title="Tren Completo"]').count() > 0:
@@ -148,25 +148,32 @@ def buscar_trenes(origen, destino, dia, hora_min, hora_max):
                         else:
                             print(f"  -> Tren en tu horario, pero sin plazas normales.")
 
-            # --- FIN DE LA LÓGICA ---
+            # --- FINAL DE LA LÓGICA DE BÚSQUEDA ---
 
 
-
-
-            if trenes_validos > 0:
-                print(f"¡Éxito! {trenes_validos} trenes disponibles en tu horario.")
-
-                #Mensaje a Telegram
-                mensaje_movil = f"🚆 ¡BINGO RENFE!\nHay {trenes_validos} trenes disponibles de {origen} a {destino} en tu horario."
+            if len(horas_disponibles) > 0:
+                # Unimos todas las horas de la lista separadas por comas
+                texto_horas = ", ".join(horas_disponibles)
+                cantidad = len(horas_disponibles)
+                
+                print(f"¡Éxito! Trenes disponibles a las: {texto_horas}")
+                
+                # --- NUEVO: AVISO POR TELEGRAM ---
+                mensaje_movil = f"🚆 ¡BINGO RENFE!\nHay {cantidad} tren(es) de {origen} a {destino}.\n🕒 Horas de salida: {texto_horas}"
                 enviar_telegram(mensaje_movil)
-
-                #Mensaje en el ordenador
-                enviar_notificacion("¡Billetes Disponibles!", f"Hay {trenes_validos} trenes de {origen} a {destino} en tu horario.")
-                alertar_en_interfaz(origen, destino, trenes_validos, hora_min, hora_max)
+                # ---------------------------------
+                
+                # Notificación de Windows
+                enviar_notificacion("¡Billetes Disponibles!", f"Horas disponibles: {texto_horas}")
+                
+                # Interfaz gráfica (mantenemos 'cantidad' como número para que no falle tu función)
+                alertar_en_interfaz(origen, destino, cantidad, texto_horas)
+                
             else:
                 print("No hay trenes disponibles en ese horario.")
                 ventana.after(0, lambda: etiqueta_estado.config(text=f"Última comprobación: Sin trenes en tu horario. Buscando...", fg="orange"))
-                
+
+
         except Exception as e:
             print(f"Error en la búsqueda: {e}")
             ventana.after(0, lambda: etiqueta_estado.config(text="Error de conexión. Reintentando...", fg="red"))
