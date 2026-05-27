@@ -15,7 +15,7 @@ def buscar_trenes(origen, destino, dia, hora_min, hora_max):
     horas_disponibles = []
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="msedge", headless=True) 
+        browser = p.chromium.launch(headless=True) 
         
         # --- NUEVO: LE DAMOS UNA PANTALLA GIGANTE AL BOT ---
         context = browser.new_context(viewport={'width': 1920, 'height': 1080})
@@ -266,9 +266,28 @@ def parar_busqueda(message):
     mostrar_menu(message) # Volvemos a poner los botones de Buscar y Estado
 
 # ==========================================
-# ENCENDIDO DEL MOTOR
+# ENCENDIDO DEL MOTOR Y TRUCO PARA RENDER
 # ==========================================
+import os
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+# Creamos una web "de mentira" para que Render no apague el bot
+class WebFalsa(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot de Renfe funcionando OK!")
+
+def encender_web():
+    # Render nos dará un número de puerto obligatorio, si no, usamos el 8080
+    puerto = int(os.environ.get("PORT", 8080))
+    servidor = HTTPServer(("0.0.0.0", puerto), WebFalsa)
+    servidor.serve_forever()
+
 if __name__ == "__main__":
-    print("☁️ Servidor iniciado. El bot está escuchando a Telegram...")
-    # Esto hace que el programa no se cierre y se quede esperando tus mensajes 24/7
+    print("☁️ Encendiendo el servidor web falso para Render...")
+    hilo_web = threading.Thread(target=encender_web, daemon=True)
+    hilo_web.start()
+    
+    print("🤖 Bot de Telegram escuchando...")
     bot.polling(none_stop=True, skip_pending=True)
