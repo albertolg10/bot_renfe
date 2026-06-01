@@ -271,15 +271,18 @@ def parar_busqueda(message):
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# Creamos una web "de mentira" para que Render no apague el bot
+# Creamos una web "de mentira" perfecta para Render
 class WebFalsa(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"Bot de Renfe funcionando OK!")
+        
+    def do_HEAD(self): # NUEVO: El "toquecito" que Render necesita
+        self.send_response(200)
+        self.end_headers()
 
 def encender_web():
-    # Render nos dará un número de puerto obligatorio, si no, usamos el 8080
     puerto = int(os.environ.get("PORT", 8080))
     servidor = HTTPServer(("0.0.0.0", puerto), WebFalsa)
     servidor.serve_forever()
@@ -289,5 +292,11 @@ if __name__ == "__main__":
     hilo_web = threading.Thread(target=encender_web, daemon=True)
     hilo_web.start()
     
-    print("🤖 Bot de Telegram escuchando...")
-    bot.polling(none_stop=True, skip_pending=True)
+    print("🤖 Iniciando secuencia de conexión con Telegram...")
+    # El escudo definitivo: Infinity Polling dentro de un bucle de espera
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True)
+        except Exception as e:
+            print(f"Esperando a que Render apague la versión antigua... (Reintento en 15s)")
+            time.sleep(15)
